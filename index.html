@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Group 6 DeFi Farm</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .card { border: 1px solid #ccc; padding: 15px; margin-bottom: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Group 6 DeFi Staking</h1>
+    <button id="connectBtn">Connect MetaMask</button>
+    <p>Wallet: <span id="walletAddress">Not connected</span></p>
+
+    <div class="card">
+        <h3>Pool 1 (ST1 / GROUP6)</h3>
+        <input type="number" id="amount0" placeholder="Amount of LP">
+        <button onclick="approveAndStake(0)">Approve & Stake</button>
+        <button onclick="withdraw(0)">Withdraw</button>
+        <button onclick="claim(0)">Claim Rewards</button>
+    </div>
+
+    <div class="card">
+        <h3>Pool 2 (ST2 / GROUP6)</h3>
+        <input type="number" id="amount1" placeholder="Amount of LP">
+        <button onclick="approveAndStake(1)">Approve & Stake</button>
+        <button onclick="withdraw(1)">Withdraw</button>
+        <button onclick="claim(1)">Claim Rewards</button>
+    </div>
+
+    <script>
+        // REPLACE THESE WITH YOUR ACTUAL ADDRESSES
+        const farmAddress = "YOUR_GROUPFARM_ADDRESS"; 
+        const lp0Address = "YOUR_LP0_ADDRESS"; // Student 1 LP
+        const lp1Address = "YOUR_LP1_ADDRESS"; // Student 2 LP
+
+        const farmABI = [
+            "function stake(uint256 poolId, uint256 amount) external",
+            "function withdraw(uint256 poolId, uint256 amount) external",
+            "function claim(uint256 poolId) public"
+        ];
+        const erc20ABI = ["function approve(address spender, uint256 amount) external returns (bool)"];
+
+        let provider, signer, farmContract;
+
+        document.getElementById("connectBtn").onclick = async () => {
+            await window.ethereum.request({ method: 'eth_requestAccounts' });
+            provider = new ethers.providers.Web3Provider(window.ethereum);
+            signer = provider.getSigner();
+            document.getElementById("walletAddress").innerText = await signer.getAddress();
+            farmContract = new ethers.Contract(farmAddress, farmABI, signer);
+        };
+
+        async function approveAndStake(poolId) {
+            const amount = ethers.utils.parseEther(document.getElementById("amount" + poolId).value);
+            const lpContract = new ethers.Contract(poolId === 0 ? lp0Address : lp1Address, erc20ABI, signer);
+            
+            // 1. Approve Farm to spend LP tokens
+            let tx = await lpContract.approve(farmAddress, amount);
+            await tx.wait();
+            
+            // 2. Stake LP tokens
+            tx = await farmContract.stake(poolId, amount);
+            await tx.wait();
+            alert("Staked successfully!");
+        }
+
+        async function withdraw(poolId) {
+            const amount = ethers.utils.parseEther(document.getElementById("amount" + poolId).value);
+            const tx = await farmContract.withdraw(poolId, amount);
+            await tx.wait();
+            alert("Withdrawn successfully!");
+        }
+
+        async function claim(poolId) {
+            const tx = await farmContract.claim(poolId);
+            await tx.wait();
+            alert("Rewards claimed!");
+        }
+    </script>
+</body>
+</html>
